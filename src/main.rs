@@ -47,12 +47,25 @@ struct Cli {
     /// Path to the identity file
     #[arg(short = 'i', long, value_name = "IDENTITY_FILE")]
     identity_file: Vec<String>,
+
+    /// Enable debug logging
+    #[arg(long, action = clap::ArgAction::SetTrue)]
+    debug: bool,
 }
 
 fn main() -> Result<()> {
-    env_logger::init();
-
     let cli = Cli::parse();
+
+    if cli.debug {
+        unsafe {
+            std::env::set_var("RUST_LOG", "debug");
+        }
+    } else {
+        unsafe {
+            std::env::set_var("RUST_LOG", "info");
+        }
+    }
+    env_logger::init();
 
     if cli.encrypt {
         info!("Protecting: {}", cli.input.display());
@@ -124,7 +137,16 @@ fn protect(
 
     debug!("Initializing zstd compression.");
     let mut zstd_encoder =
-        zstd::Encoder::new(&mut age_writer, 0).context("Failed to create zstd encoder")?;
+        zstd::Encoder::new(&mut age_writer, 3).context("Failed to create zstd encoder")?;
+
+    // Enable multithreaded compression if available
+    zstd_encoder
+        .multithread(num_cpus::get() as u32)
+        .context("Failed to enable multithreaded zstd encoder")?;
+    debug!(
+        "Enabled multithreaded zstd compression with {} threads.",
+        num_cpus::get()
+    );
 
     debug!("Archiving input {} into tar stream.", input_path.display());
     {
