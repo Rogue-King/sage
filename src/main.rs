@@ -2,9 +2,9 @@ use age::cli_common;
 use age::cli_common::StdinGuard;
 use anyhow::{Context, Result, anyhow};
 use clap::Parser;
+use log::{debug, error, info, warn};
 use std::fs::{self, File};
 use std::path::{Path, PathBuf};
-use log::{info, warn, error, debug};
 
 /// A tool to compress, encrypt, and add error correction to a file or directory.
 #[derive(Parser, Debug)]
@@ -126,20 +126,14 @@ fn protect(
     let mut zstd_encoder =
         zstd::Encoder::new(&mut age_writer, 0).context("Failed to create zstd encoder")?;
 
-    debug!(
-        "Archiving input {} into tar stream.",
-        input_path.display()
-    );
+    debug!("Archiving input {} into tar stream.", input_path.display());
     {
         let mut tar_builder = tar::Builder::new(&mut zstd_encoder);
         if input_path.is_dir() {
             tar_builder
                 .append_dir_all(".", input_path)
                 .with_context(|| format!("Failed to archive directory {}", input_path.display()))?;
-            debug!(
-                "Directory archived successfully: {}",
-                input_path.display()
-            );
+            debug!("Directory archived successfully: {}", input_path.display());
         } else {
             let mut file = File::open(input_path).context("Failed to open input file")?;
             let filename = input_path
@@ -147,10 +141,7 @@ fn protect(
                 .ok_or_else(|| anyhow!("Invalid input file name"))?
                 .to_string_lossy();
             tar_builder.append_file(Path::new(filename.as_ref()), &mut file)?;
-            debug!(
-                "File archived successfully: {}",
-                input_path.display()
-            );
+            debug!("File archived successfully: {}", input_path.display());
         }
         tar_builder.finish()?;
     }
