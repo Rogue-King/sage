@@ -8,12 +8,14 @@ Sage is a command-line tool to compress, encrypt, and add error correction to fi
 - **Recover (Decrypt):** Decrypts and extracts protected archives.
 - **Multiple Recipients:** Supports encrypting to multiple recipients or recipient files.
 - **Identity Files:** Supports multiple identity files for decryption.
+- **Configurable Compression:** Set zstd compression level (1-22, default: 3).
+- **Debug Logging:** Enable debug output for troubleshooting.
 
 ## Usage
 
 ```sh
-sage --encrypt --input <INPUT> --output <OUTPUT> [--recipient <RECIPIENT> ...] [--recipients-file <FILE> ...] [--identity-file <IDENTITY> ...]
-sage --decrypt --input <INPUT> --output <OUTPUT> [--identity-file <IDENTITY> ...]
+sage --encrypt --input <INPUT> --output <OUTPUT> [--recipient <RECIPIENT> ...] [--recipients-file <FILE> ...] [--identity-file <IDENTITY> ...] [--compression-level <LEVEL>] [--debug]
+sage --decrypt --input <INPUT> --output <OUTPUT> [--identity-file <IDENTITY> ...] [--debug]
 ```
 
 ### Options
@@ -25,6 +27,8 @@ sage --decrypt --input <INPUT> --output <OUTPUT> [--identity-file <IDENTITY> ...
 - `-r`, `--recipient <RECIPIENT>` : Encrypt to the specified recipient (can be repeated)
 - `-R`, `--recipients-file <FILE>` : Encrypt to recipients listed at path (can be repeated)
 - `-i`, `--identity-file <IDENTITY>` : Path to the identity file (can be repeated)
+- `-c`, `--compression-level <LEVEL>` : Set zstd compression level (1-22, default: 3)
+- `--debug` : Enable debug logging
 
 ## Example
 
@@ -32,6 +36,12 @@ Encrypt a directory for a recipient:
 
 ```sh
 sage --encrypt --input my_folder --output my_folder.sage --recipient age1example...
+```
+
+Encrypt a file with custom compression and debug logging:
+
+```sh
+sage --encrypt --input notes.txt --output notes.sage --recipient age1example... --compression-level 10 --debug
 ```
 
 Decrypt an archive:
@@ -49,3 +59,5 @@ cargo build --release
 ```
 
 ## License
+
+MIT or Apache-2.0
