@@ -51,10 +51,31 @@ struct Cli {
     /// Enable debug logging
     #[arg(long, action = clap::ArgAction::SetTrue)]
     debug: bool,
+
+    /// Compression level (1-22, default: 3)
+    #[arg(
+        short = 'c',
+        long = "compression-level",
+        value_name = "LEVEL",
+        default_value_t = 3,
+        help = "Set compression level (1-22)"
+    )]
+    compression_level: i32,
 }
 
 fn main() -> Result<()> {
     let cli = Cli::parse();
+
+    if cli.compression_level < 1 || cli.compression_level > 22 {
+        error!(
+            "Invalid compression level: {}. Please use a value between 1 and 22 (inclusive).",
+            cli.compression_level
+        );
+        return Err(anyhow!(
+            "Invalid compression level: {}. Please use a value between 1 and 22 (inclusive).",
+            cli.compression_level
+        ));
+    }
 
     if cli.debug {
         unsafe {
@@ -75,6 +96,7 @@ fn main() -> Result<()> {
             cli.recipient,
             cli.recipients_file,
             cli.identity_file,
+            cli.compression_level,
         ) {
             error!("Failed to protect file: {e}");
             return Err(e);
@@ -103,7 +125,9 @@ fn protect(
     recipient_strings: Vec<String>,
     recipients_file_strings: Vec<String>,
     identity_strings: Vec<String>,
+    mut compression_level: i32,
 ) -> Result<()> {
+    compression_level = compression_level.clamp(1, 22);
     let max_work_factor: Option<u8> = Some(15);
     let mut stdin_guard = StdinGuard::new(true);
 
@@ -135,11 +159,13 @@ fn protect(
     let encryptor = age::Encryptor::with_recipients(recipients.iter().map(|r| r.as_ref()))?;
     let mut age_writer = encryptor.wrap_output(output_file)?;
 
-    debug!("Initializing zstd compression.");
-    let mut zstd_encoder =
-        zstd::Encoder::new(&mut age_writer, 3).context("Failed to create zstd encoder")?;
+    debug!(
+        "Initializing zstd compression with level {}.",
+        compression_level
+    );
+    let mut zstd_encoder = zstd::Encoder::new(&mut age_writer, compression_level)
+        .context("Failed to create zstd encoder")?;
 
-    // Enable multithreaded compression if available
     zstd_encoder
         .multithread(num_cpus::get() as u32)
         .context("Failed to enable multithreaded zstd encoder")?;
