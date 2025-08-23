@@ -152,9 +152,28 @@ fn protect(
     {
         let mut tar_builder = tar::Builder::new(&mut zstd_encoder);
         if input_path.is_dir() {
-            tar_builder
-                .append_dir_all(".", input_path)
-                .with_context(|| format!("Failed to archive directory {}", input_path.display()))?;
+            for entry in walkdir::WalkDir::new(input_path) {
+                let entry = entry?;
+                let path = entry.path();
+                let rel_path = path.strip_prefix(input_path)?;
+                // Skip the root directory itself (empty rel_path)
+                if rel_path.as_os_str().is_empty() {
+                    continue;
+                }
+                if path.is_symlink() {
+                    // Skip broken symlinks
+                    if !path.exists() {
+                        warn!("Skipping broken symlink: {}", path.display());
+                        continue;
+                    }
+                }
+                if path.is_dir() {
+                    tar_builder.append_dir(rel_path, path)?;
+                } else if path.is_file() {
+                    let mut file = File::open(path)?;
+                    tar_builder.append_file(rel_path, &mut file)?;
+                }
+            }
             debug!("Directory archived successfully: {}", input_path.display());
         } else {
             let mut file = File::open(input_path).context("Failed to open input file")?;
