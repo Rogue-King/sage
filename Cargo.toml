@@ -11,17 +11,19 @@ description = "An Encryption, Compression, and Error Correction tool."
 clap = { version = "4.5.45", features = ["derive"] }
 
 # Encryption/Decryption
-age = "0.11.1"
+age = { version = "0.11.1", features = ["async","cli-common"] }
 
 # Compression/Decompression
 zstd = "0.13.3"
 tar = "0.4.44"
 
 # Error Correction
-reed-solomon-erasure = "5.0.3"
+# reed-solomon-erasure = "5.0.3"
 
 # Error Handling
 anyhow = "1.0.99"
+log = "0.4.27"
+env_logger = "0.11.8"
 
 [profile.dev]
 opt-level = 0
