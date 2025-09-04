@@ -11,18 +11,14 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  linux-x86_64-aarch64:
-    name: Build and Release
+  build-linux-gnu:
+    name: Build Linux GNU
     runs-on: ubuntu-latest
     strategy:
       matrix:
         target:
           - x86_64-unknown-linux-gnu
-          - x86_64-unknown-linux-musl
           - aarch64-unknown-linux-gnu
-          - aarch64-unknown-linux-musl
-          - aarch64-apple-darwin
-
     steps:
       - name: Checkout
         uses: actions/checkout@v5
@@ -32,41 +28,26 @@ jobs:
         with:
           target: ${{ matrix.target }}
 
-      - name: Setup Zig
-        if: matrix.target == 'aarch64-apple-darwin'
-        uses: Rogue-King/setup-zig@v1.2.0
+      - name: Install Protoc
+        uses: arduino/setup-protoc@v3
         with:
-          version: latest
+          repo-token: ${{ secrets.HUB_TOKEN }}
 
       - name: Install cross compilation tools
+        if: matrix.target == 'aarch64-unknown-linux-gnu'
         run: |
           sudo apt-get update 
-
-          # Install linkers and cross-compilation tools
-          if [[ "${{ matrix.target }}" == "aarch64-unknown-linux-gnu" ]]; then
-            sudo apt-get install -y gcc-aarch64-linux-gnu
-          elif [[ "${{ matrix.target }}" == "aarch64-unknown-linux-musl" ]]; then
-            sudo apt-get install -y gcc-aarch64-linux-gnu musl-tools
-          elif [[ "${{ matrix.target }}" == "x86_64-unknown-linux-musl" ]]; then
-            sudo apt-get install -y musl-tools
-          fi
+          sudo apt-get install -y gcc-aarch64-linux-gnu
 
       - name: Configure linkers
+        if: matrix.target == 'aarch64-unknown-linux-gnu'
         run: |
           mkdir -p ~/.cargo
           cat >> ~/.cargo/config.toml << EOF
           [target.aarch64-unknown-linux-gnu]
           linker = "aarch64-linux-gnu-gcc"
-          
-          [target.aarch64-unknown-linux-musl]
-          linker = "aarch64-linux-gnu-gcc"
           EOF
 
-      - name: Install cargo-zigbuild
-        if: matrix.target == 'aarch64-apple-darwin'
-        run: cargo install --locked cargo-zigbuild
-
-    
       - name: Cache
         uses: actions/cache@v4
         with:
@@ -79,9 +60,115 @@ jobs:
           key: ${{ runner.os }}-cargo-${{ matrix.target }}-${{ hashFiles('**/Cargo.lock') }}
 
       - name: Build
+        run: cargo build --release --target ${{ matrix.target }}
+
+      - name: Upload artifact
+        uses: https://github.com/christopherHX/gitea-upload-artifact@v4
+        with:
+          name: sage-${{ matrix.target }}
+          path: target/${{ matrix.target }}/release/sage
+
+  build-linux-musl:
+    name: Build Linux MUSL
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        target:
+          - x86_64-unknown-linux-musl
+          - aarch64-unknown-linux-musl
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          target: ${{ matrix.target }}
+
+      - name: Install Protoc
+        uses: arduino/setup-protoc@v3
+        with:
+          repo-token: ${{ secrets.HUB_TOKEN }}
+
+      - name: Install cross compilation tools
         run: |
-          if [[ "${{ matrix.target }}" == "aarch64-apple-darwin" ]]; then
-            cargo zigbuild --release --target ${{ matrix.target }}
+          sudo apt-get update 
+          if [[ "${{ matrix.target }}" == "aarch64-unknown-linux-musl" ]]; then
+            sudo apt-get install -y gcc-aarch64-linux-gnu musl-tools
           else
-            cargo build --release --target ${{ matrix.target }}
+            sudo apt-get install -y musl-tools
           fi
+
+      - name: Configure linkers
+        if: matrix.target == 'aarch64-unknown-linux-musl'
+        run: |
+          mkdir -p ~/.cargo
+          cat >> ~/.cargo/config.toml << EOF
+          [target.aarch64-unknown-linux-musl]
+          linker = "aarch64-linux-gnu-gcc"
+          EOF
+
+      - name: Cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: ${{ runner.os }}-cargo-${{ matrix.target }}-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Build
+        run: cargo build --release --target ${{ matrix.target }}
+
+      - name: Upload artifact
+        uses: https://github.com/christopherHX/gitea-upload-artifact@v4
+        with:
+          name: sage-${{ matrix.target }}
+          path: target/${{ matrix.target }}/release/sage
+
+  build-macos:
+    name: Build macOS
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          target: aarch64-apple-darwin
+
+      - name: Setup Zig
+        uses: Rogue-King/setup-zig@v1.2.0
+        with:
+          version: latest
+
+      - name: Install Protoc
+        uses: arduino/setup-protoc@v3
+        with:
+          repo-token: ${{ secrets.HUB_TOKEN }}
+
+      - name: Install cargo-zigbuild
+        run: cargo install --locked cargo-zigbuild
+
+      - name: Cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: ${{ runner.os }}-cargo-aarch64-apple-darwin-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Build
+        run: cargo zigbuild --release --target aarch64-apple-darwin
+
+      - name: Upload artifact
+        uses: https://github.com/christopherHX/gitea-upload-artifact@v4
+        with:
+          name: sage-aarch64-apple-darwin
+          path: target/aarch64-apple-darwin/release/sage

@@ -14,7 +14,12 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: rustfmt, clippy
-          
+
+      - name: Install Protoc
+        uses: arduino/setup-protoc@v3
+        with:
+          repo-token: ${{ secrets.HUB_TOKEN }}
+
       - name: Cache
         uses: actions/cache@v4
         with:
