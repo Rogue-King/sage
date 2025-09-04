@@ -1,0 +1,46 @@
+name: build
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+jobs:
+  build:
+    name: Find vulnerabilities with Trivy
+    runs-on: ubuntu-20.04
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Trivy (custom script)
+        run: |
+          set -e
+
+          # Get the latest release version
+          RELEASE=$(wget -q https://github.com/aquasecurity/trivy/releases/latest -O - | grep "title>Release" | cut -d " " -f 4 | sed 's/^v//')
+          RELEASE_Linux=${RELEASE}_Linux
+
+          # Download and extract Trivy
+          wget -q https://github.com/aquasecurity/trivy/releases/download/v$RELEASE/trivy_${RELEASE_Linux}-64bit.tar.gz
+          tar -xzf trivy_${RELEASE_Linux}-64bit.tar.gz
+
+          # Move binary to /usr/bin
+          mv ./trivy /usr/bin
+
+          echo "Trivy installed successfully."
+
+          echo "Caching Trivy database..."
+          trivy fs --download-db-only
+          echo "Trivy database cached successfully."
+
+      - name: Cache Go Modules
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/trivy
+          key: trivy-db-${{ runner.os }}-${{ steps.trivy-version.outputs.version }}
+          restore-keys: |
+            trivy-db-${{ runner.os }}-
+
+      - name: Run Trivy FS Scan
+        run: |
+          trivy fs ./ --severity CRITICAL,HIGH,MEDIUM,LOW
