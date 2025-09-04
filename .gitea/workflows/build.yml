@@ -38,9 +38,6 @@ jobs:
         with:
           version: latest
 
-      - name: Install Protoc
-        uses: arduino/setup-protoc@v3
-          
       - name: Install cross compilation tools
         run: |
           sudo apt-get update 
