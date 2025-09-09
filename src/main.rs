@@ -256,14 +256,14 @@ fn recover(input_path: &Path, output_path: &Path, identity_strings: Vec<String>)
     );
     let mut archive = tar::Archive::new(&mut zstd_decoder);
 
-    if let Some(parent) = output_path.parent()
-        && !parent.exists()
-    {
-        debug!(
-            "Output directory does not exist. Creating: {}",
-            parent.display()
-        );
-        fs::create_dir_all(parent)?;
+    if let Some(parent) = output_path.parent() {
+        if !parent.exists() {
+            debug!(
+                "Output directory does not exist. Creating: {}",
+                parent.display()
+            );
+            fs::create_dir_all(parent)?;
+        }
     }
     archive.unpack(output_path)?;
     debug!(

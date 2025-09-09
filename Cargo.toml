@@ -6,7 +6,7 @@ description = "An Encryption, Compression, and Error Correction tool."
 
 [dependencies]
 clap = { version = "4.5.47", features = ["derive"] }
-age = { version = "0.11.1", features = ["async", "cli-common", "plugin"] }
+age = { version = "0.11.1", features = ["cli-common", "plugin"] }
 zstd = { version = "0.13.3", features = ["zstdmt"] }
 tar = "0.4.44"
 anyhow = "1.0.99"

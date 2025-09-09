@@ -141,7 +141,7 @@ jobs:
           target: aarch64-apple-darwin
 
       - name: Setup Zig
-        uses: Rogue-King/setup-zig@v1.2.0
+        uses: Rogue-King/setup-zig@v1
         with:
           version: latest
 
